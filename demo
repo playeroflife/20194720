@@ -1,0 +1,222 @@
+package com;
+import java.awt.List;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Random;
+import java.util.Scanner;
+
+import javax.script.ScriptEngine;
+import javax.script.ScriptEngineManager;
+import javax.script.ScriptException;
+
+import org.junit.Test;
+
+public class CalculateGenerator {
+    private static ScriptEngine scriptEngine = new ScriptEngineManager().getEngineByName("JavaScript");
+    private static final char PLUS = '+';
+    private static final char MINUS = '-';
+    private static final char MULTIPLY = '*';
+    private static final char DIVIDE = '/';
+    private static final char DISPLAY_DIVIDE = '÷';
+    private static final char EQUALS = '=';
+    private static final String DOT = ".";
+    private static final String DOT_REGEX = "\\.";
+    private static final char[] operators = {PLUS, MINUS, MULTIPLY, DIVIDE};
+    private static final Integer MIN_OPERATOR_COUNT = 1;
+    private static final Integer MAX_OPERATOR_COUNT = 1;
+    private static final Integer MIN_CAL_VALUE = 0;
+    private static final Integer MAX_CAL_VALUE = 100;
+    private static final String FILE_NAME = "result.txt";
+    private static final String STUDENT_NO = "come on";
+    private static final String NEW_LINE = "\r\n";
+    private static Random random = new Random();
+    public static void main(String[] args) throws ScriptException {
+    	while(true){
+        System.out.println("请输入要生成的练习题数量：输入0退出");
+        Scanner scanner = new Scanner(System.in);
+        Integer expressionCount = scanner.nextInt();
+        if(expressionCount==0){
+        	System.out.println("你已经退出系统");
+        	break;
+        }
+        System.out.println("请输入操作数的范围(0-100,1000,10000)");
+        Integer bb= scanner.nextInt();
+        System.out.println("请选择操作数量；1（2个），2（3个）");
+        Integer aa= scanner.nextInt();
+        if(expressionCount<0&&bb<0&&bb>10000&&(aa!=1||aa!=2)){
+        	System.out.println("你的操作有误请重新输入：");
+        }else{
+        ArrayList<String> expressionList = new ArrayList<>();
+        for (int i = 1; i <= expressionCount; i++) {
+            expressionList.add(getNextExpression(bb,aa));
+            System.out.println(String.format("正在生成第 %s 道题", i));
+        }
+        writeExpressionsToFile(expressionList);
+        System.out.println("生成练习题完成请到result.txt文件查询");
+    }
+}
+  }
+	/**
+     * 将练习题输出到文件
+     *
+     * @param expressionList
+     */
+    private static void writeExpressionsToFile(ArrayList<String> expressionList) {
+        File file = new File(FILE_NAME);
+        try (FileWriter fileWriter = new FileWriter(file)) {
+            fileWriter.append(STUDENT_NO);
+            for (String expression : expressionList) {
+                fileWriter.append(NEW_LINE);
+                fileWriter.append(expression);
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+    /**
+     * 生成练习题
+     *
+     * @return
+     * @throws ScriptException
+     */
+    private static String getNextExpression(int bb,int aa) throws ScriptException {
+        System.out.println("尝试生成下一道题");
+        // 运算符数量
+        int operatorCount = random.nextInt(aa + 1 - MIN_OPERATOR_COUNT) + MIN_OPERATOR_COUNT;
+        StringBuilder expression = new StringBuilder();
+        // 运算符
+        ArrayList<Character> operatorList = getOperatorList(operatorCount, aa);
+        // 运算数
+        ArrayList<Integer> calValueList = getCalValueList(bb);
+        for (int i = 0; i < operatorList.size(); i++) {
+            Character operator = operatorList.get(i);
+            Integer previousCalValue = calValueList.get(i);
+            Integer nextCalValue = calValueList.get(i + 1);  
+            	expression.append(previousCalValue);
+            // 除法校验除数不为0且能被整除
+            if (DIVIDE == operator) {
+                calValueList.set(i + 1, getDivideCalValue(previousCalValue, nextCalValue));
+            } else if (MINUS == operator) {
+                // 减法校验被减数大于减数
+                // 当包含小数点时向下取整
+                String currentResultString = scriptEngine.eval(expression.toString()).toString();
+                if (currentResultString.contains(DOT)) {
+                    currentResultString = currentResultString.split(DOT_REGEX)[0];
+                }
+                Integer currentResult = Integer.valueOf(currentResultString);
+                while (currentResult < nextCalValue) {
+                    nextCalValue = random.nextInt(aa + 1);
+                }
+                calValueList.set(i + 1, nextCalValue);
+            }
+            expression.append(operator);
+        }
+        expression.append(calValueList.get(operatorCount));
+        // 计算当前结果是否为正整数
+        String result = scriptEngine.eval(expression.toString()).toString();
+        if (result.contains(DOT) && Integer.valueOf(result) < 0 ||Integer.valueOf(result) >100  ) {
+            System.out.println("当前题目不符合要求");
+            return getNextExpression(bb,aa);
+        }
+        String currentExpression = expression.append(EQUALS).append(result)
+                .toString()
+                .replaceAll(String.valueOf(DIVIDE), String.valueOf(DISPLAY_DIVIDE));
+        return currentExpression;
+    }
+    /**
+     * 获取运算符
+     *
+     * @param operatorCount
+     * @return
+     */
+    private static ArrayList<Character> getOperatorList(int operatorCount,int a  ) {
+    	ArrayList<Character> operatorList = new ArrayList<>();
+        for (int i = 0; i < operatorCount; i++) {	
+            Character operator = operators[random.nextInt(operators.length)];
+           // operatorList.add(operator);
+            if(a==1 ){
+            	if( (operator.equals(PLUS)&&operator.equals(MINUS)) ){
+            	operatorList.add(operator);
+            	}
+            	else{
+            		Character operator1 = operators[random.nextInt(operators.length)];
+            		operatorList.add(operator1);
+            	}
+        	}else{
+        		Character operator1 = operators[random.nextInt(operators.length)];
+        		operatorList.add(operator1);
+        	}
+        }
+        return operatorList;
+    }
+    /**
+     * 获取运算数
+     *
+     * @param calValueCount
+     * @return
+     */
+    private static ArrayList<Integer> getCalValueList(int calValueCount) {
+    	ArrayList<Integer> calValueList = new ArrayList<>();
+        for (int i = 0; i < calValueCount; i++) {
+            calValueList.add(random.nextInt(calValueCount + 1));
+        }
+        return calValueList;
+    }
+    /**
+     * 当为除法时校验除数不为0且能被整除
+     *
+     * @param previousCalValue
+     * @param nextCalValue
+     * @return
+     */
+    private static int getDivideCalValue(Integer previousCalValue, Integer nextCalValue) {
+        if (nextCalValue == 0 || previousCalValue % nextCalValue != 0) {
+            nextCalValue = random.nextInt(MAX_CAL_VALUE) + 1;
+            return getDivideCalValue(previousCalValue, nextCalValue);
+        }
+        return nextCalValue;
+    }
+    
+   /* @Test
+    public  void main1() throws ScriptException {
+    	while(true){
+        System.out.println("请输入要生成的练习题数量：输入0退出");
+        Scanner scanner = new Scanner(System.in);
+        Integer expressionCount = scanner.nextInt();
+        
+        if(expressionCount==0){
+        	System.out.println("你已经退出系统");
+        	break;
+        }
+        System.out.println("请输入操作数的范围(0-100,1000,10000)");
+        Integer bb= scanner.nextInt();
+        System.out.println("请选择操作数量；1（2个），2（3个）");
+        //Scanner scanner = new Scanner(System.in);
+        Integer aa= scanner.nextInt();
+       
+        
+        if(expressionCount<0&&bb<0&&bb>10000&&(aa!=1||aa!=2)){
+        	
+            
+            
+        	System.out.println("你的操作有误请重新输入：");
+        }else{
+        
+
+
+        ArrayList<String> expressionList = new ArrayList<>();
+        for (int i = 1; i <= expressionCount; i++) {
+            expressionList.add(getNextExpression(bb,aa));
+            System.out.println(String.format("正在生成第 %s 道题", i));
+        }
+
+        writeExpressionsToFile(expressionList);
+        System.out.println("生成练习题完成请到result.txt文件查询");
+    }
+}
+  }*/
+    
+   
+}
